@@ -115,6 +115,13 @@ config.example.toml   documented; copy to config.toml or ~/.config/duo87/
 duo87-deck.desktop    autostart entry; copy to ~/.config/autostart/
 ```
 
+**Install (no venv):** `./install.sh` puts `duo87-deck` (tray daemon) and
+`duo87` (CLI) launchers in `~/.local/bin`, seeds `~/.config/duo87/config.toml`,
+and sets autostart (niri `spawn-at-startup` + an XDG `.desktop`). The launchers
+run the source with the **system** Python because the app needs system packages
+(pillow, pyqt6, pygobject) that do not install cleanly in a venv/pipx. Re-run
+install.sh after `git pull` on another machine.
+
 Run it: `python3 -m deck.daemon` for the real always-on app (tray icon, holds
 the device, edit settings + reload from the menu). `python3 -m deck` is the
 headless runner for testing (`-v` logs events, `--list` shows what a config
