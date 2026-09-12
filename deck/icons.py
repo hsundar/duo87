@@ -59,50 +59,68 @@ def _themes():
     return order
 
 
-@functools.lru_cache(maxsize=512)
+def _score_path(p, themes):
+    s = 0
+    if os.sep + 'apps' + os.sep in p:
+        s += 5000                           # prefer application icons
+    for i, t in enumerate(themes):          # current theme first
+        if (os.sep + t + os.sep) in p:
+            s += (len(themes) - i) * 500
+            break
+    if p.endswith('.svg'):
+        s += 300                            # scalable: crisp at any size
+    m = re.findall(r'(?:^|\D)(\d{2,4})(?:x\d{2,4})?\D', p)
+    if m:
+        s += min(int(m[-1]), 512) // 8
+    return s
+
+
+@functools.lru_cache(maxsize=1)
+def _index():
+    """Build {name: best path} and the set of app-icon names, in one bounded scan.
+
+    Icon themes lay files out three levels below the theme root (size/category/
+    name or category/size/name), so a fixed-depth glob finds everything without
+    the recursive `**` walk that made per-name lookups pathologically slow (and
+    hung the icon picker). Built once and cached.
+    """
+    themes = _themes()
+    best = {}                               # name -> (score, path)
+    apps = set()
+
+    def consider(name, path):
+        sc = _score_path(path, themes)
+        cur = best.get(name)
+        if cur is None or sc > cur[0]:
+            best[name] = (sc, path)
+
+    for base in _BASE_DIRS:
+        for theme in themes:
+            root = os.path.join(base, theme)
+            if not os.path.isdir(root):
+                continue
+            for ext in ('svg', 'png'):
+                for path in glob.glob(os.path.join(root, '*', '*', '*.' + ext)):
+                    name = os.path.splitext(os.path.basename(path))[0]
+                    consider(name, path)
+                    if os.sep + 'apps' + os.sep in path:
+                        apps.add(name)
+    for pm in _PIXMAPS:
+        for ext in ('svg', 'png', 'xpm'):
+            for path in glob.glob(os.path.join(pm, '*.' + ext)):
+                name = os.path.splitext(os.path.basename(path))[0]
+                consider(name, path)
+                apps.add(name)
+    return {k: v[1] for k, v in best.items()}, apps
+
+
 def find_icon(name):
     """Return a file path for icon `name` (or an absolute path passed through)."""
     if not name:
         return None
     if os.path.isabs(name):
         return name if os.path.exists(name) else None
-
-    cands = []
-    for base in _BASE_DIRS:
-        for theme in _themes():
-            root = os.path.join(base, theme)
-            if not os.path.isdir(root):
-                continue
-            for ext in ('svg', 'png'):
-                cands.extend(glob.glob(os.path.join(root, '**', name + '.' + ext),
-                                       recursive=True))
-    for pm in _PIXMAPS:
-        for ext in ('svg', 'png', 'xpm'):
-            p = os.path.join(pm, name + '.' + ext)
-            if os.path.exists(p):
-                cands.append(p)
-    if not cands:
-        return None
-
-    themes = _themes()
-
-    def score(p):
-        s = 0
-        if os.sep + 'apps' + os.sep in p:
-            s += 5000                       # prefer application icons
-        # earliest matching theme wins (current theme first)
-        for i, t in enumerate(themes):
-            if (os.sep + t + os.sep) in p:
-                s += (len(themes) - i) * 500
-                break
-        if p.endswith('.svg'):
-            s += 300                        # scalable: crisp at any size
-        m = re.findall(r'(?:^|\D)(\d{2,4})(?:x\d{2,4})?\D', p)
-        if m:
-            s += min(int(m[-1]), 512) // 8
-        return s
-
-    return max(cands, key=score)
+    return _index()[0].get(name)
 
 
 def _to_pil(buf):
@@ -151,27 +169,15 @@ def load_symbolic(name, size=96, tint=(235, 235, 240)):
             or load_icon(name, size, tint=tint))
 
 
-@functools.lru_cache(maxsize=1)
 def list_icon_names():
-    """Sorted, de-duplicated icon names available in the themes (apps + pixmaps).
+    """Sorted app-icon names available in the themes (for the settings picker)."""
+    apps = _index()[1]
+    return sorted(n for n in apps if not n.endswith('-symbolic'))
 
-    For the settings icon picker. Scans the application-icon directories of every
-    installed theme plus /usr/share/pixmaps.
-    """
-    names = set()
-    for base in _BASE_DIRS:
-        if not os.path.isdir(base):
-            continue
-        for path in glob.glob(os.path.join(base, '*', '**', 'apps', '*.*'), recursive=True):
-            stem, ext = os.path.splitext(os.path.basename(path))
-            if ext.lower() in ('.svg', '.png') and not stem.endswith('-symbolic'):
-                names.add(stem)
-    for pm in _PIXMAPS:
-        for path in glob.glob(os.path.join(pm, '*.*')):
-            stem, ext = os.path.splitext(os.path.basename(path))
-            if ext.lower() in ('.svg', '.png', '.xpm'):
-                names.add(stem)
-    return sorted(names)
+
+def icon_path(name):
+    """Path for `name` without theme scoring -- for fast picker previews."""
+    return find_icon(name)
 
 
 def guess_name(item):
