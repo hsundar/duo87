@@ -329,29 +329,59 @@ def keystroke(combo):
 
 # --- audio device selection (PipeWire/Pulse via pactl) ---------------------
 
+def _prop(line):
+    """Value from a `key = "value"` pactl property line."""
+    if '=' in line:
+        v = line.split('=', 1)[1].strip()
+        return v.strip('"')
+    return ''
+
+
 def _audio_devices(kind):
-    """kind 'sinks' (outputs) or 'sources' (inputs). -> [{name, description, default}]."""
+    """kind 'sinks' (outputs) or 'sources' (inputs).
+
+    -> [{name, description, default, bus, form_factor, card_name}].
+    """
     if not (LINUX and _has('pactl')):
         return []
+    import re
     which = 'sink' if kind == 'sinks' else 'source'
     default = _capture(['pactl', 'get-default-' + which])
     out = _capture(['pactl', 'list', kind])
     if not out:
         return []
-    devices, name, desc = [], None, None
+    devices, cur = [], None
     for line in out.splitlines():
+        if re.match(r'^(Sink|Source) #\d', line):
+            if cur and cur.get('name'):
+                devices.append(cur)
+            cur = {'name': None, 'description': None, 'default': False,
+                   'bus': '', 'form_factor': '', 'card_name': ''}
+            continue
+        if cur is None:
+            continue
         st = line.strip()
         if st.startswith('Name:'):
-            name = st.split(':', 1)[1].strip()
+            cur['name'] = st.split(':', 1)[1].strip()
         elif st.startswith('Description:'):
-            desc = st.split(':', 1)[1].strip()
-            if name:
-                # skip monitor sources (loopbacks, not real inputs)
-                if not (kind == 'sources' and name.endswith('.monitor')):
-                    devices.append({'name': name, 'description': desc or name,
-                                    'default': name == default})
-            name = desc = None
-    return devices
+            cur['description'] = st.split(':', 1)[1].strip()
+        elif st.startswith('device.bus ='):
+            cur['bus'] = _prop(st)
+        elif st.startswith('device.form_factor ='):
+            cur['form_factor'] = _prop(st)
+        elif st.startswith('alsa.card_name ='):
+            cur['card_name'] = _prop(st)
+    if cur and cur.get('name'):
+        devices.append(cur)
+    # finalise: default flag, drop monitor sources, tidy description
+    result = []
+    for d in devices:
+        if kind == 'sources' and d['name'].endswith('.monitor'):
+            continue
+        d['default'] = d['name'] == default
+        d['description'] = d['description'] or d['name']
+        result.append(d)
+    return result
 
 
 def audio_outputs():

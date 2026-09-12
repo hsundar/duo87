@@ -9,13 +9,41 @@ from .. import render, osapi, icons
 from ..core import Page
 
 
-def _short(desc):
-    """Trim boilerplate from a device description and cap the length for a label."""
-    for junk in (' Analog Stereo', ' Digital Stereo', ' Stereo', ' Audio Controller',
-                 ' High Definition', ' Digital', ' Analog'):
-        desc = desc.replace(junk, '')
-    desc = desc.strip()
-    return desc if len(desc) <= 22 else desc[:21].rstrip() + '…'
+def _label(dev):
+    """A short, distinctive label from the device's metadata."""
+    desc = dev.get('description') or ''
+    if 'HDMI' in desc:
+        return 'HDMI'
+    if dev.get('form_factor') == 'internal':
+        return 'Built-in'
+    name = dev.get('card_name') or desc
+    for junk in ('Microsoft ', 'HDA ', ' Analog Stereo', ' Stereo'):
+        name = name.replace(junk, '')
+    name = name.strip()
+    return name if len(name) <= 16 else name[:15].rstrip() + '…'
+
+
+def _icon_for(dev, is_output):
+    """Pick a distinct icon from bus / form factor / HDMI."""
+    desc = (dev.get('description') or '').upper()
+    ff = dev.get('form_factor') or ''
+    bus = dev.get('bus') or ''
+    if bus == 'bluetooth':
+        return 'bluetooth'
+    if is_output:
+        if 'HDMI' in desc or 'DISPLAYPORT' in desc:
+            return 'video-display'
+        if ff in ('headphone', 'headset'):
+            return 'audio-headphones'
+        if bus == 'usb':
+            return 'audio-speakers'
+        return 'audio-card'
+    else:
+        if ff == 'webcam' or 'CAM' in desc.upper():
+            return 'camera-web'
+        if ff == 'headset':
+            return 'audio-headset'
+        return 'audio-input-microphone'
 
 
 class AudioPage(Page):
@@ -26,12 +54,12 @@ class AudioPage(Page):
         self._outputs = []
         self._inputs = []
 
-    def _dev_tile(self, dev, icon_name, key):
+    def _dev_tile(self, dev, is_output, key):
         active = dev.get('default')
         face = (24, 60, 40) if active else render.SURFACE     # green-tinted when active
-        img = icons.load_symbolic(icon_name, 42,
-                                  tint=(235, 245, 238) if active else (210, 210, 216))
-        return render.button_tile(img, _short(dev['description']),
+        img = icons.load_symbolic(_icon_for(dev, is_output), 40,
+                                  tint=(235, 245, 238) if active else (205, 205, 212))
+        return render.button_tile(img, _label(dev), icon_size=38, label_size=15,
                                   face=face, accent=render.OK if active else None, key=key)
 
     def tiles(self, deck):
@@ -41,11 +69,11 @@ class AudioPage(Page):
         # Top two rows: outputs (tiles 1-6). Bottom two rows: inputs (7-12).
         for i in range(6):
             key = i + 1
-            out[key] = (self._dev_tile(self._outputs[i], 'audio-volume-high', key)
+            out[key] = (self._dev_tile(self._outputs[i], True, key)
                         if i < len(self._outputs) else render.blank_tile())
         for i in range(6):
             key = i + 7
-            out[key] = (self._dev_tile(self._inputs[i], 'audio-input-microphone', key)
+            out[key] = (self._dev_tile(self._inputs[i], False, key)
                         if i < len(self._inputs) else render.blank_tile())
         if not osapi.LINUX or not osapi._has('pactl'):
             out[5] = render.text_tile('pactl not found', bg=render.SURFACE,

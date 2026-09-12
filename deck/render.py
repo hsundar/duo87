@@ -203,7 +203,7 @@ COL_BUTTON_INSET = {0: (0, 22)}      # column 1: 22px extra on the right
 
 def button_tile(icon_img=None, label=None, glyph=None, bg=BG, face=SURFACE,
                 accent=None, glyph_size=40, inset=9, radius=16, icon_size=None,
-                key=None):
+                key=None, label_size=12):
     """A discrete button: a rounded face inset in the tile on a dark ground.
 
     Smaller than a full-bleed tile, so buttons read as buttons with breathing
@@ -236,7 +236,7 @@ def button_tile(icon_img=None, label=None, glyph=None, bg=BG, face=SURFACE,
         f = _fit(d, glyph, glyph_size, True, max_w=(x1 - x0) - 12)
         d.text((fcx, cy), glyph, font=f, fill=FG, anchor='mm')
     if has_label:
-        f = _fit(d, label, 12, False, max_w=(x1 - x0) - 8)
+        f = _fit(d, label, label_size, False, max_w=(x1 - x0) - 8)
         d.text((fcx, y1 - 13), label, font=f, fill=MUTED, anchor='mm')
     return im
 
