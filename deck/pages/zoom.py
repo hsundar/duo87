@@ -30,7 +30,7 @@ ZOOM_ICONS = {
     'full':       ('view-fullscreen', 'full'),
     'join':       ('call-start', 'join'),
     'leave':      ('call-stop', 'end'),
-    'open':        ('zoom', 'zm'),          # full-colour app icon (see _btn)
+    'open':        ('Zoom', 'zm'),          # the Zoom app icon (capital Z); see _btn
     'personal':    ('call-start', 'room'),
 }
 
@@ -91,17 +91,24 @@ class ZoomPage(Page):
         return render.button_tile(img, label, glyph=glyph, glyph_size=20,
                                   face=face, accent=accent, key=key)
 
-    def _personal_room_uri(self):
+    def _start_target(self):
+        """URL to start a meeting: the personal room if a PMI/URL is set, else
+        Zoom's generic 'start' (an instant meeting -- your room if Zoom is set to
+        use your PMI for instant meetings)."""
         pr = self.personal_room
-        if not pr:
-            return None
-        pr = str(pr).strip()
-        if pr.startswith(('http://', 'https://', 'zoommtg://')):
+        if pr:
+            pr = str(pr).strip()
+            if pr.startswith(('http://', 'https://', 'zoommtg://')):
+                return pr
+            digits = pr.replace(' ', '').replace('-', '')
+            if digits.isdigit():
+                return 'zoommtg://zoom.us/start?confno=%s' % digits
             return pr
-        digits = pr.replace(' ', '').replace('-', '')
-        if digits.isdigit():                   # a PMI number -> start it
-            return 'zoommtg://zoom.us/start?confno=%s' % digits
-        return pr
+        return 'zoommtg://zoom.us/start'
+
+    def _join_target(self):
+        """The configured meeting, else Zoom's generic join dialog."""
+        return self.join_uri or 'zoommtg://zoom.us/join'
 
     def _keystroke_warning(self):
         if not osapi.LINUX:
@@ -122,10 +129,9 @@ class ZoomPage(Page):
     def _idle_tiles(self):
         out = {k: render.blank_tile() for k in range(1, 13)}
         out[1] = self._btn('open', 'Open Zoom', 1, symbolic=False)
-        if self._personal_room_uri():
-            out[2] = self._btn('personal', 'My Room', 2, accent=render.OK)
-        if self.join_uri:
-            out[3] = self._btn('join', 'Join', 3)
+        room_label = 'My Room' if self.personal_room else 'New Mtg'
+        out[2] = self._btn('personal', room_label, 2, accent=render.OK)
+        out[3] = self._btn('join', 'Join', 3)
         out[10] = render.text_tile('no meeting', bg=render.BG, fg=render.MUTED, size=12)
         return out
 
@@ -172,10 +178,10 @@ class ZoomPage(Page):
     def _on_idle_press(self, deck, key):
         if key == 1:
             osapi.launch(self.open_command)
-        elif key == 2 and self._personal_room_uri():
-            osapi.open_uri(self._personal_room_uri())
-        elif key == 3 and self.join_uri:
-            osapi.open_uri(self.join_uri)
+        elif key == 2:
+            osapi.open_uri(self._start_target())
+        elif key == 3:
+            osapi.open_uri(self._join_target())
         else:
             return
         # Reset toggle guesses for the next meeting, then re-check shortly.
