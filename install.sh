@@ -66,6 +66,23 @@ elif [ -f "$NIRI" ]; then
   echo "niri           -> spawn-at-startup already present"
 fi
 
+# --- udev rule reminder (needs sudo; we cannot do it here) -----------------
+if [ ! -f /etc/udev/rules.d/99-duo87.rules ]; then
+  echo
+  echo "ACTION NEEDED: install the udev rule so your user can reach the pad:"
+  echo "  sudo install -m644 \"$REPO/99-duo87.rules\" /etc/udev/rules.d/"
+  echo "  sudo udevadm control --reload"
+  echo "  sudo udevadm trigger --action=add --subsystem-match=hidraw"
+fi
+
+# --- ydotool reminder (for Zoom controls) ----------------------------------
+if command -v ydotool >/dev/null 2>&1 \
+   && ! systemctl --user is-enabled ydotool.service >/dev/null 2>&1; then
+  echo
+  echo "For Zoom controls, enable the keystroke daemon:"
+  echo "  systemctl --user enable --now ydotool.service"
+fi
+
 echo
 echo "Done. Start now with:  duo87-deck   (or it will start at next login)."
 if ! command -v duo87-deck >/dev/null 2>&1; then
