@@ -22,11 +22,13 @@ and GObject bindings and break the app):
 - Optional: `playerctl` is not needed (media uses `busctl`/MPRIS); `ydotool`
   (+ its daemon) for the Zoom keystroke controls; `wpctl`/`pactl` for volume.
 
-On Arch/Manjaro:
+Install these **before** running the app. On Arch/Manjaro:
 
 ```
 sudo pacman -S --needed python python-pillow pyqt6 python-gobject ydotool
 ```
+
+Debian/Ubuntu: `sudo apt install python3-pil python3-pyqt6 python3-gi gir1.2-gdkpixbuf-2.0 ydotool`. Verify with `python3 -c "import PIL, PyQt6, gi"`.
 
 ## Install
 

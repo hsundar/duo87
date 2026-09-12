@@ -66,6 +66,26 @@ elif [ -f "$NIRI" ]; then
   echo "niri           -> spawn-at-startup already present"
 fi
 
+# --- Python dependency check (system interpreter, not a venv) --------------
+missing=""
+for probe in "PIL:pillow" "PyQt6:pyqt6" "gi:pygobject"; do
+  mod="${probe%%:*}"
+  python3 -c "import $mod" 2>/dev/null || missing="$missing ${probe##*:}"
+done
+if [ -n "$missing" ]; then
+  echo
+  echo "MISSING Python modules (needed by the app):$missing"
+  if command -v pacman >/dev/null 2>&1; then
+    echo "  sudo pacman -S --needed python-pillow pyqt6 python-gobject"
+  elif command -v apt >/dev/null 2>&1; then
+    echo "  sudo apt install python3-pil python3-pyqt6 python3-gi gir1.2-gdkpixbuf-2.0"
+  elif command -v dnf >/dev/null 2>&1; then
+    echo "  sudo dnf install python3-pillow python3-pyqt6 python3-gobject"
+  else
+    echo "  install them with your distro's package manager (pillow, pyqt6, pygobject)."
+  fi
+fi
+
 # --- udev rule reminder (needs sudo; we cannot do it here) -----------------
 if [ ! -f /etc/udev/rules.d/99-duo87.rules ]; then
   echo
