@@ -148,8 +148,11 @@ class MediaPage(Page):
 
         # Bottom row: volume. Mute button shows the level and muted state.
         out[10] = self._vol_btn('voldn', 'vol -', 10)
+        # The middle button is the mute toggle: always the crossed-speaker mute
+        # icon (distinct from vol-/vol+), red when actually muted; the label
+        # shows the level or "muted".
         vol_label = 'muted' if muted else ('%d%%' % vol if vol is not None else 'mute')
-        out[11] = self._vol_btn('mute' if muted else 'volup', vol_label, 11,
+        out[11] = self._vol_btn('mute', vol_label, 11,
                                 accent=render.ALERT if muted else None)
         out[12] = self._vol_btn('volup', 'vol +', 12)
         return out
