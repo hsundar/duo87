@@ -117,13 +117,13 @@ class MediaPage(Page):
         scrim = Image.new('RGBA', tile.size, (0, 0, 0, 0))
         sd = ImageDraw.Draw(scrim)
         cx = cy = render.SIZE // 2
-        sd.ellipse([cx - 34, cy - 34, cx + 34, cy + 34], fill=(0, 0, 0, 90))
+        sd.ellipse([cx - 30, cy - 30, cx + 30, cy + 30], fill=(0, 0, 0, 45))
         tile.alpha_composite(scrim)
         if icon is not None:
-            if max(icon.size) != 48:
-                icon = icon.resize((48, 48), Image.LANCZOS)
+            if max(icon.size) != 44:
+                icon = icon.resize((44, 44), Image.LANCZOS)
             icon = icon.copy()
-            icon.putalpha(icon.getchannel('A').point(lambda a: int(a * 0.85)))
+            icon.putalpha(icon.getchannel('A').point(lambda a: int(a * 0.55)))
             tile.alpha_composite(icon, (cx - icon.width // 2, cy - icon.height // 2))
         return tile.convert('RGB')
 
