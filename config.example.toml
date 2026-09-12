@@ -1,0 +1,74 @@
+# DUO87 deck configuration.
+#
+# Copy to ~/.config/duo87/config.toml (the daemon's default) or ./config.toml,
+# or edit it visually from the tray: `python3 -m deck.daemon` > Settings.
+# `python3 -m deck --list` shows what a config builds without the hardware.
+
+# Screen brightness 0..100. 0 is a floor, not off (the panel stays faintly lit).
+brightness = 80
+
+# ------------------------------------------------------------------ surfaces
+# Two surfaces (see PROTOCOL.md 2.9):
+#   pages  -- touchable tiles, horizontal swipe to move between them
+#   cards  -- full-panel wallpaper, swipe DOWN to browse (max 3; slot 0 is the
+#             pad's own stock image, which cannot be changed)
+
+pages = ["launcher", "media", "system", "zoom"]
+
+# You can have SEVERAL launcher pages under any names -- give each a section with
+#   type = "launcher"  and its own items, e.g.:
+#   pages = ["apps", "dev", "media", "system"]
+#   [apps]  type = "launcher"  items = [ ... ]
+#   [dev]   type = "launcher"  items = [ ... ]
+# Builtin page names (media/system/zoom/calendar/nowplaying) need no `type`.
+cards = ["clock", "weather", "calendar"]
+
+
+# ------------------------------------------------------------------ pages
+[launcher]
+# icons = true      # show icon-theme icons (default); false = text tiles
+# labels = true     # show a label under each icon (default)
+# Each item: label + a command OR a uri. `icon` is an icon-theme name (firefox,
+# org.gnome.Nautilus) or an image path; omit it to guess from the command.
+items = [
+  { label = "Terminal", command = "alacritty", icon = "Alacritty" },
+  { label = "Code",     command = "code" },
+  { label = "Firefox",  command = "firefox" },
+  { label = "Files",    command = "nautilus", icon = "org.gnome.Nautilus" },
+]
+
+# media: MPRIS transport buttons (busctl; no extra package). No config needed.
+# system: live CPU/mem graphs + stats. disk = which filesystem the meter watches.
+[system]
+disk = "/"
+
+# zoom: meeting controls via keyboard shortcuts. On Wayland needs `ydotool`
+# (its daemon running); on X11 uses `xdotool`. Zoom window must have focus.
+[zoom]
+# join_uri = "https://zoom.us/j/0000000000"
+
+
+# ------------------------------------------------------------------ cards
+[clock]
+time_format = "%H:%M"
+date_format = "%A"
+sub_format  = "%d %B %Y"
+
+# weather: Open-Meteo (no account). Set a place (geocoded once) or lat/lon.
+[weather]
+place = "Boston, MA"
+units = "imperial"          # or "metric"
+
+# calendar: iCal URLs (Google "secret address in iCal format") and/or local
+# .ics paths. Each source gets its own colour. Keep private URLs in your OWN
+# config file, never in the repo.
+[calendar]
+slots = 6
+sources = [
+  # "https://calendar.google.com/calendar/ical/…/private-…/basic.ics",
+  # "~/.calendars/*.ics",
+]
+
+# nowplaying: album art + title/artist/progress from MPRIS. No config needed.
+[nowplaying]
+progress = true

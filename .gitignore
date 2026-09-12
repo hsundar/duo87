@@ -1,0 +1,22 @@
+# Byte-compiled / caches
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Virtualenvs
+.venv/
+venv/
+env/
+
+# Local config MAY contain private calendar URLs / tokens — never commit it.
+# Use config.example.toml as the template (copy to ~/.config/duo87/config.toml).
+config.toml
+*.local.toml
+
+# Editor / OS / sync cruft
+*.swp
+*~
+.DS_Store
+*.tmp
+*[Cc]onflicted*

@@ -1,0 +1,9 @@
+# Womier DUO87 display pad (HotSpot/MiraBox "Stream Dock" class device).
+# TAG+="uaccess" is the clean way (ACL for whoever is logged in at the seat);
+# GROUP="wheel" is a fallback for systems where logind does not apply the ACL
+# to a hidraw node that was tagged after the session started. Change the group
+# to whichever one your desktop user is in.
+KERNEL=="hidraw*", ATTRS{idVendor}=="0600", ATTRS{idProduct}=="3001", MODE="0660", GROUP="wheel", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0600", ATTRS{idProduct}=="3001", MODE="0660", GROUP="wheel", TAG+="uaccess"
+# Womier DUO87 keyboard, QMK/VIA raw HID interface (for VIA / Vial in the browser)
+KERNEL=="hidraw*", ATTRS{idVendor}=="342d", ATTRS{idProduct}=="e542", MODE="0660", GROUP="wheel", TAG+="uaccess"

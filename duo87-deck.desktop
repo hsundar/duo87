@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=DUO87 Deck
+Comment=Drive the Womier DUO87 display pad
+Exec=python3 -m deck.daemon
+Path=/home/hari/Ideas/duo87
+Icon=input-keyboard
+Terminal=false
+Categories=Utility;
+X-GNOME-Autostart-enabled=true
