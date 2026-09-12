@@ -59,7 +59,9 @@ class MediaPage(Page):
             try:
                 with Image.open(path) as im:
                     im.load()
-                    self._art_tiles = render.tile_block(im, 2, 2)
+                    # Art sits at grid columns 2-3 (col0=1), so use those columns'
+                    # shifts, not columns 1-2's.
+                    self._art_tiles = render.tile_block(im, 2, 2, col0=1, row0=0)
                 self._art_path = path
             except Exception:
                 self._art_path, self._art_tiles = None, None

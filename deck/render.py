@@ -329,7 +329,8 @@ COL_SHIFT = [24, 0, -9]
 ROW_SHIFT = []
 
 
-def tile_block(im, cols, rows, gap=None, col_shift=None, row_shift=None):
+def tile_block(im, cols, rows, gap=None, col_shift=None, row_shift=None,
+               col0=0, row0=0):
     """Scale `im` to cover a cols x rows block and split it into tiles.
 
     Returns {(col, row): image} with coordinates relative to the block, so a
@@ -337,7 +338,9 @@ def tile_block(im, cols, rows, gap=None, col_shift=None, row_shift=None):
     looks far better spanning 2x2 than squeezed into one 80x80 tile.
 
     `gap` is the bezel compensation in image pixels per seam (default GAP); pass
-    0 for a naive contiguous split.
+    0 for a naive contiguous split. `col0`/`row0` say where the block sits on the
+    3x4 grid, so the correct slice of COL_SHIFT/ROW_SHIFT is used -- a 2x2 art
+    block at columns 2-3 needs those columns' shifts, not columns 1-2's.
     """
     gap = GAP if gap is None else gap
     # Lay the image out on a virtual canvas that includes the dividers, then
@@ -358,8 +361,17 @@ def tile_block(im, cols, rows, gap=None, col_shift=None, row_shift=None):
     # first column is clipped by the panel edge, so its visible width is smaller
     # than the others and the seam between columns 1 and 2 jumps further than
     # the one between 2 and 3. A uniform `gap` cannot express that; these can.
-    cs = list(col_shift or COL_SHIFT or [0] * cols)
-    rs = list(row_shift or ROW_SHIFT or [0] * rows)
+    # Use the shift slice for the columns/rows this block actually occupies.
+    if col_shift is None:
+        gcs = COL_SHIFT or []
+        cs = [gcs[col0 + i] if col0 + i < len(gcs) else 0 for i in range(cols)]
+    else:
+        cs = list(col_shift)
+    if row_shift is None:
+        grs = ROW_SHIFT or []
+        rs = [grs[row0 + i] if row0 + i < len(grs) else 0 for i in range(rows)]
+    else:
+        rs = list(row_shift)
     cs += [0] * (cols - len(cs))
     rs += [0] * (rows - len(rs))
 

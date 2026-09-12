@@ -30,6 +30,8 @@ ZOOM_ICONS = {
     'full':       ('view-fullscreen', 'full'),
     'join':       ('call-start', 'join'),
     'leave':      ('call-stop', 'end'),
+    'open':        ('zoom', 'zm'),          # full-colour app icon (see _btn)
+    'personal':    ('call-start', 'room'),
 }
 
 # Zoom's defaults. Windows/Linux use Alt; macOS uses Cmd/Shift.
@@ -58,60 +60,102 @@ SHORTCUTS_MAC = {
 
 
 class ZoomPage(Page):
-    title = 'zoom'
-    interval = None
+    """Two states, switched by whether a Zoom meeting window is open:
 
-    def __init__(self, shortcuts=None, join_uri=None):
+    * Idle -> launch actions: Open Zoom, Start personal room, Join (if set).
+    * In a meeting -> the meeting controls (mute, video, share, ... , leave).
+
+    The meeting is detected from the window list (osapi.zoom_meeting_active), so
+    the page polls on `interval` and repaints when the state changes.
+    """
+
+    title = 'zoom'
+    interval = 2.0          # poll for the meeting window
+
+    def __init__(self, shortcuts=None, join_uri=None, personal_room=None,
+                 open_command='zoom'):
         self.shortcuts = dict(shortcuts or (SHORTCUTS_MAC if osapi.MACOS else SHORTCUTS_PC))
         self.join_uri = join_uri
-        # Zoom does not report state back to us, so these are what *we* think the
-        # state is: toggled locally on each press. They can drift if the user also
-        # clicks in the Zoom window; pressing twice resyncs.
+        self.personal_room = personal_room     # PMI number or a start URL
+        self.open_command = open_command
+        # Zoom does not report state back, so these are our local guess, toggled
+        # on each press; pressing twice resyncs if it drifts.
         self.muted = None
         self.video_off = None
+        self._active = False
 
-    @property
-    def _usable(self):
-        return osapi.keystroke_backend() is not None
+    # -- helpers -----------------------------------------------------------
+    def _btn(self, icon_key, label, key, accent=None, face=render.SURFACE, symbolic=True):
+        name, glyph = ZOOM_ICONS[icon_key]
+        img = icons.load_symbolic(name, 46) if symbolic else icons.load_icon(name, 64)
+        return render.button_tile(img, label, glyph=glyph, glyph_size=20,
+                                  face=face, accent=accent, key=key)
 
+    def _personal_room_uri(self):
+        pr = self.personal_room
+        if not pr:
+            return None
+        pr = str(pr).strip()
+        if pr.startswith(('http://', 'https://', 'zoommtg://')):
+            return pr
+        digits = pr.replace(' ', '').replace('-', '')
+        if digits.isdigit():                   # a PMI number -> start it
+            return 'zoommtg://zoom.us/start?confno=%s' % digits
+        return pr
+
+    def _keystroke_warning(self):
+        if not osapi.LINUX:
+            return None
+        if osapi.ydotool_ready():
+            return None
+        if osapi._has('ydotool'):
+            return 'run ydotoold'              # installed but daemon not running
+        if osapi.os.environ.get('WAYLAND_DISPLAY'):
+            return 'install ydotool'
+        return None if osapi._has('xdotool') else 'no key backend'
+
+    # -- rendering ---------------------------------------------------------
     def tiles(self, deck):
-        warn = None
-        if not self._usable:
-            warn = ('install ydotool' if osapi.LINUX and osapi.os.environ.get('WAYLAND_DISPLAY')
-                    else 'no key backend')
+        self._active = osapi.zoom_meeting_active()
+        return self._meeting_tiles() if self._active else self._idle_tiles()
 
-        def btn(icon_key, label, key, accent=None, face=render.SURFACE):
-            name, glyph = ZOOM_ICONS[icon_key]
-            img = icons.load_symbolic(name, 46)      # light monochrome icon
-            return render.button_tile(img, label, glyph=glyph, glyph_size=20,
-                                      face=face, accent=accent, key=key)
+    def _idle_tiles(self):
+        out = {k: render.blank_tile() for k in range(1, 13)}
+        out[1] = self._btn('open', 'Open Zoom', 1, symbolic=False)
+        if self._personal_room_uri():
+            out[2] = self._btn('personal', 'My Room', 2, accent=render.OK)
+        if self.join_uri:
+            out[3] = self._btn('join', 'Join', 3)
+        out[10] = render.text_tile('no meeting', bg=render.BG, fg=render.MUTED, size=12)
+        return out
 
+    def _meeting_tiles(self):
+        warn = self._keystroke_warning()
         mute_state = render.ALERT if self.muted else (render.OK if self.muted is False else None)
         vid_state = render.ALERT if self.video_off else (render.OK if self.video_off is False else None)
-
         out = {
-            1: btn('mute_muted' if self.muted else 'mute', 'mute', 1, accent=mute_state),
-            2: btn('video_off' if self.video_off else 'video', 'video', 2, accent=vid_state),
-            3: btn('share', 'share', 3),
-            4: btn('chat', 'chat', 4),
-            5: btn('people', 'people', 5),
-            6: btn('hand', 'hand', 6),
-            7: btn('record', 'record', 7),
-            8: btn('full', 'full', 8),
+            1: self._btn('mute_muted' if self.muted else 'mute', 'mute', 1, accent=mute_state),
+            2: self._btn('video_off' if self.video_off else 'video', 'video', 2, accent=vid_state),
+            3: self._btn('share', 'share', 3),
+            4: self._btn('chat', 'chat', 4),
+            5: self._btn('people', 'people', 5),
+            6: self._btn('hand', 'hand', 6),
+            7: self._btn('record', 'record', 7),
+            8: self._btn('full', 'full', 8),
             9: render.blank_tile(),
             10: render.text_tile(warn, bg=render.SURFACE, fg=render.WARN,
                                  size=11) if warn else render.blank_tile(),
-            11: btn('join', 'join', 11) if self.join_uri else render.blank_tile(),
-            12: btn('leave', 'leave', 12, face=(90, 24, 24), accent=render.ALERT),
+            11: render.blank_tile(),
+            12: self._btn('leave', 'leave', 12, face=(90, 24, 24), accent=render.ALERT),
         }
         return out
 
     def on_press(self, deck, key):
+        if not self._active:
+            self._on_idle_press(deck, key)
+            return
         mapping = {1: 'mute', 2: 'video', 3: 'share', 4: 'chat', 5: 'people',
                    6: 'hand', 7: 'record', 8: 'fullscr', 12: 'leave'}
-        if key == 11 and self.join_uri:
-            osapi.open_uri(self.join_uri)
-            return
         name = mapping.get(key)
         if not name:
             return
@@ -124,3 +168,15 @@ class ZoomPage(Page):
         elif sent and name == 'video':
             self.video_off = not self.video_off if self.video_off is not None else True
         deck.repaint()
+
+    def _on_idle_press(self, deck, key):
+        if key == 1:
+            osapi.launch(self.open_command)
+        elif key == 2 and self._personal_room_uri():
+            osapi.open_uri(self._personal_room_uri())
+        elif key == 3 and self.join_uri:
+            osapi.open_uri(self.join_uri)
+        else:
+            return
+        # Reset toggle guesses for the next meeting, then re-check shortly.
+        self.muted = self.video_off = None

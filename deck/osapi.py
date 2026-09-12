@@ -286,9 +286,14 @@ def keystroke_backend():
     return None
 
 
-# ydotool uses Linux input-event key names; xdotool uses X keysyms.
-_YDO = {'alt': 56, 'ctrl': 29, 'shift': 42, 'cmd': 125,
-        'a': 30, 'v': 47, 'q': 16, 's': 31, 'h': 35, 'm': 50, 'w': 17}
+# ydotool uses Linux input-event key codes; xdotool uses X keysyms.
+_YDO = {'alt': 56, 'ctrl': 29, 'shift': 42, 'cmd': 125, 'super': 125,
+        'a': 30, 'b': 48, 'c': 46, 'd': 32, 'e': 18, 'f': 33, 'g': 34, 'h': 35,
+        'i': 23, 'j': 36, 'k': 37, 'l': 38, 'm': 50, 'n': 49, 'o': 24, 'p': 25,
+        'q': 16, 'r': 19, 's': 31, 't': 20, 'u': 22, 'v': 47, 'w': 17, 'x': 45,
+        'y': 21, 'z': 44,
+        '1': 2, '2': 3, '3': 4, '4': 5, '5': 6, '6': 7, '7': 8, '8': 9, '9': 10,
+        '0': 11}
 
 
 def keystroke(combo):
@@ -315,6 +320,50 @@ def keystroke(combo):
             script += ' using {%s}' % ', '.join(using)
         return _run(['osascript', '-e', script])
     return False
+
+
+# --- window detection (for state-aware pages, e.g. Zoom) --------------------
+
+def list_windows():
+    """Return [{app_id, title}] for open windows, across compositors.
+
+    niri (Wayland) via its JSON IPC, else wmctrl (X11). Empty if none work.
+    """
+    if _has('niri'):
+        out = _capture(['niri', 'msg', '--json', 'windows'])
+        if out:
+            import json
+            try:
+                return [{'app_id': (w.get('app_id') or ''), 'title': (w.get('title') or '')}
+                        for w in json.loads(out)]
+            except Exception:
+                pass
+    if _has('wmctrl'):
+        out = _capture(['wmctrl', '-lx'])
+        if out:
+            wins = []
+            for line in out.splitlines():
+                parts = line.split(None, 4)
+                if len(parts) >= 4:
+                    wins.append({'app_id': parts[2],
+                                 'title': parts[4] if len(parts) > 4 else ''})
+            return wins
+    return []
+
+
+def zoom_meeting_active():
+    """True if a Zoom *meeting* window is open (not just the main Zoom window)."""
+    for w in list_windows():
+        app = (w.get('app_id') or '').lower()
+        title = (w.get('title') or '').lower()
+        if 'meeting' in title and ('zoom' in app or 'zoom' in title):
+            return True
+    return False
+
+
+def ydotool_ready():
+    """ydotool needs its daemon; the binary alone is not enough."""
+    return _has('ydotool') and bool(_capture(['pgrep', '-x', 'ydotoold']))
 
 
 # --- system metrics ---------------------------------------------------------

@@ -126,7 +126,9 @@ def build_pages(cfg):
             built.append(NowPlayingPage(show_progress=section.get('progress', True)))
         elif ptype == 'zoom':
             built.append(ZoomPage(shortcuts=section.get('shortcuts'),
-                                  join_uri=section.get('join_uri')))
+                                  join_uri=section.get('join_uri'),
+                                  personal_room=section.get('personal_room'),
+                                  open_command=section.get('open_command', 'zoom')))
         else:
             print('page %r has no type (set type=... in [%s]); skipped' % (name, name),
                   file=sys.stderr)

@@ -84,12 +84,20 @@ class SysMonPage(CanvasPage):
         m = self._metrics()
 
         # --- band 0: clock ------------------------------------------------
+        # A big HH:MM would cross the column-1/2 seam (and column 1 is clipped on
+        # its right), so it breaks on the physical gap. Split it: HH ends inside
+        # column 1, MM starts inside column 2, and the gap reads as the separator.
         y0, y1 = rows[0]
-        d.text((6, (y0 + y1) // 2 - 2), time.strftime('%H:%M'),
-               font=render.font(38, True), fill=render.FG, anchor='lm')
-        d.text((W - 6, y0 + 24), time.strftime('%a %d %b'),
+        cy = (y0 + y1) // 2 - 2
+        now = time.strftime('%H:%M').split(':')
+        col1_r, col2_l = cols[0][1], cols[1][0]
+        d.text((col1_r - 18, cy), now[0] + ':', font=render.font(46, True),
+               fill=render.FG, anchor='rm')             # "HH:", right of column 1
+        d.text((col2_l + 4, cy), now[1], font=render.font(46, True),
+               fill=render.FG, anchor='lm')             # MM, left of column 2
+        d.text((W - 10, y0 + 24), time.strftime('%a %d %b'),
                font=render.font(13, False), fill=render.MUTED, anchor='rm')
-        d.text((W - 6, y0 + 46), 'up %s' % (self._uptime() or '--'),
+        d.text((W - 10, y0 + 46), 'up %s' % (self._uptime() or '--'),
                font=render.font(12, False), fill=render.MUTED, anchor='rm')
 
         # --- bands 1 and 2: graph labels ----------------------------------

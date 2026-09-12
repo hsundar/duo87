@@ -45,7 +45,11 @@ disk = "/"
 # zoom: meeting controls via keyboard shortcuts. On Wayland needs `ydotool`
 # (its daemon running); on X11 uses `xdotool`. Zoom window must have focus.
 [zoom]
-# join_uri = "https://zoom.us/j/0000000000"
+# When no meeting is active the page shows launch actions; the controls appear
+# only once a Zoom meeting window is open (detected via the compositor).
+# open_command = "zoom"                 # what the "Open Zoom" button runs
+# personal_room = "1234567890"          # your PMI -> "Start my room", or a start URL
+# join_uri = "https://zoom.us/j/0000000000"   # a specific meeting to join
 
 
 # ------------------------------------------------------------------ cards
