@@ -167,6 +167,30 @@ def media_available():
     return bool(mpris_players()) or (LINUX and _has('playerctl')) or MACOS or WINDOWS
 
 
+def get_volume():
+    """Return (percent:int|None, muted:bool). Reads PipeWire (wpctl) or Pulse."""
+    if LINUX and _has('wpctl'):
+        out = _capture(['wpctl', 'get-volume', '@DEFAULT_AUDIO_SINK@'])
+        if out:
+            muted = 'MUTED' in out
+            try:
+                vol = float(out.split('Volume:')[1].split()[0])
+                return int(round(vol * 100)), muted
+            except (IndexError, ValueError):
+                return None, muted
+    if LINUX and _has('pactl'):
+        vol = _capture(['pactl', 'get-sink-volume', '@DEFAULT_SINK@'])
+        mut = _capture(['pactl', 'get-sink-mute', '@DEFAULT_SINK@'])
+        pct = None
+        if vol:
+            import re
+            m = re.search(r'(\d+)%', vol)
+            if m:
+                pct = int(m.group(1))
+        return pct, (bool(mut) and 'yes' in mut)
+    return None, False
+
+
 def media_status():
     """Everything the pad might show about what is playing.
 

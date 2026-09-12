@@ -115,8 +115,13 @@ def _to_pil(buf):
 
 
 @functools.lru_cache(maxsize=256)
-def load_icon(name, size=96):
-    """Resolve `name` and return a `size`x`size`-ish PIL RGBA image, or None."""
+def load_icon(name, size=96, tint=None):
+    """Resolve `name` and return a `size`-ish PIL RGBA image, or None.
+
+    `tint` (r, g, b) recolours the icon to that colour using its alpha as a
+    mask -- for monochrome *symbolic* icons, which are usually dark and would be
+    invisible on a dark button. Do not tint full-colour app icons.
+    """
     pb = _pixbuf()
     if not pb:
         return None
@@ -125,12 +130,48 @@ def load_icon(name, size=96):
         return None
     try:
         buf = pb.Pixbuf.new_from_file_at_scale(path, size, size, True)
+        im = _to_pil(buf)
     except Exception:
         return None
-    try:
-        return _to_pil(buf)
-    except Exception:
-        return None
+    if tint is not None:
+        from PIL import Image
+        solid = Image.new('RGBA', im.size, (tint[0], tint[1], tint[2], 0))
+        solid.putalpha(im.getchannel('A'))
+        return solid
+    return im
+
+
+def load_symbolic(name, size=96, tint=(235, 235, 240)):
+    """A monochrome control icon recoloured light: try `name`-symbolic, then `name`.
+
+    Used by control pages (media, zoom) so icons read on dark buttons. Falls back
+    to None -> the caller shows a text glyph.
+    """
+    return (load_icon(name + '-symbolic', size, tint=tint)
+            or load_icon(name, size, tint=tint))
+
+
+@functools.lru_cache(maxsize=1)
+def list_icon_names():
+    """Sorted, de-duplicated icon names available in the themes (apps + pixmaps).
+
+    For the settings icon picker. Scans the application-icon directories of every
+    installed theme plus /usr/share/pixmaps.
+    """
+    names = set()
+    for base in _BASE_DIRS:
+        if not os.path.isdir(base):
+            continue
+        for path in glob.glob(os.path.join(base, '*', '**', 'apps', '*.*'), recursive=True):
+            stem, ext = os.path.splitext(os.path.basename(path))
+            if ext.lower() in ('.svg', '.png') and not stem.endswith('-symbolic'):
+                names.add(stem)
+    for pm in _PIXMAPS:
+        for path in glob.glob(os.path.join(pm, '*.*')):
+            stem, ext = os.path.splitext(os.path.basename(path))
+            if ext.lower() in ('.svg', '.png', '.xpm'):
+                names.add(stem)
+    return sorted(names)
 
 
 def guess_name(item):

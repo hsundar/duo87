@@ -194,38 +194,50 @@ def blank_tile():
     return blank(BG)
 
 
+#: Per-column extra inset (left, right) in tile pixels for button faces. Some
+#: columns' physical windows are clipped -- column 1 loses pixels on its right --
+#: so a button inset the same on every column gets cropped there. Column index
+#: is (key - 1) % 3. Calibrated on the hardware with tools/gapcal.py --button.
+COL_BUTTON_INSET = {0: (0, 22)}      # column 1: 22px extra on the right
+
+
 def button_tile(icon_img=None, label=None, glyph=None, bg=BG, face=SURFACE,
-                accent=None, glyph_size=40, inset=9, radius=16):
+                accent=None, glyph_size=40, inset=9, radius=16, icon_size=None,
+                key=None):
     """A discrete button: a rounded face inset in the tile on a dark ground.
 
     Smaller than a full-bleed tile, so buttons read as buttons with breathing
     room. Shows `icon_img` (PIL RGBA) if given, else a `glyph` string, then an
-    optional `label`. `accent` tints the face's left edge for state.
+    optional `label`. `accent` tints the face's left edge for state. Pass `key`
+    (1..12) so a clipped column gets extra edge inset (COL_BUTTON_INSET).
     """
     im = blank(bg)
     d = ImageDraw.Draw(im)
-    x0, y0, x1, y1 = inset, inset, SIZE - inset, SIZE - inset
+    el, er = COL_BUTTON_INSET.get((key - 1) % 3, (0, 0)) if key else (0, 0)
+    x0, y0, x1, y1 = inset + el, inset, SIZE - inset - er, SIZE - inset
     d.rounded_rectangle([x0, y0, x1, y1], radius=radius, fill=face)
     if accent:
         # a short accent tab on the left edge of the face
         d.rounded_rectangle([x0, y0 + 10, x0 + 5, y1 - 10], radius=2, fill=accent)
 
     has_label = bool(label)
+    fcx = (x0 + x1) // 2          # centre within the face, not the whole tile
     cy = (y0 + y1) // 2 - (8 if has_label else 0)
     if icon_img is not None:
-        target = (y1 - y0) - (26 if has_label else 16)
+        # Icons sit comfortably inside the face rather than filling it.
+        target = icon_size or (44 if has_label else 56)
         ic = icon_img.convert('RGBA')
         if max(ic.size) != target:
             sc = target / max(ic.size)
             ic = ic.resize((max(1, round(ic.width * sc)), max(1, round(ic.height * sc))),
                            Image.LANCZOS)
-        im.paste(ic, (SIZE // 2 - ic.width // 2, cy - ic.height // 2), ic)
+        im.paste(ic, (fcx - ic.width // 2, cy - ic.height // 2), ic)
     elif glyph:
         f = _fit(d, glyph, glyph_size, True, max_w=(x1 - x0) - 12)
-        d.text((SIZE // 2, cy), glyph, font=f, fill=FG, anchor='mm')
+        d.text((fcx, cy), glyph, font=f, fill=FG, anchor='mm')
     if has_label:
         f = _fit(d, label, 12, False, max_w=(x1 - x0) - 8)
-        d.text((SIZE // 2, y1 - 13), label, font=f, fill=MUTED, anchor='mm')
+        d.text((fcx, y1 - 13), label, font=f, fill=MUTED, anchor='mm')
     return im
 
 

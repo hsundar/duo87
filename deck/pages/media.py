@@ -44,10 +44,11 @@ class MediaPage(Page):
     def on_show(self, deck):
         self._info = osapi.media_status()
 
-    def _btn(self, which, label, accent=None):
+    def _btn(self, which, label, key, accent=None):
         name, glyph = _CONTROLS[which]
-        img = icons.load_icon(name, 64)
-        return render.button_tile(img, label, glyph=glyph, glyph_size=30, accent=accent)
+        img = icons.load_symbolic(name, 48)          # light monochrome icon
+        return render.button_tile(img, label, glyph=glyph, glyph_size=26,
+                                  accent=accent, key=key)
 
     def _art(self):
         path = self._info.get('art')
@@ -68,42 +69,41 @@ class MediaPage(Page):
         self._info = osapi.media_status()
         info = self._info
         playing = (info.get('status') or '').lower() == 'playing'
+        vol, muted = osapi.get_volume()
         out = {}
 
-        # Rows 1-2: transport + volume as icon buttons.
-        out[1] = self._btn('prev', 'prev')
-        out[2] = self._btn('pause' if playing else 'play', 'pause' if playing else 'play',
-                           accent=render.OK if playing else None)
-        out[3] = self._btn('next', 'next')
-        out[4] = self._btn('voldn', 'vol -')
-        out[5] = self._btn('mute', 'mute')
-        out[6] = self._btn('volup', 'vol +')
-
-        # Rows 3-4: album art (2x2 on the right) + title/artist (left column).
-        art = self._art()
-        if art:
-            mapping = {(0, 0): 8, (1, 0): 9, (0, 1): 11, (1, 1): 12}
-            for (c, r), key in mapping.items():
-                out[key] = art[(c, r)]
-        else:
-            for k in (8, 9, 11, 12):
-                out[k] = render.blank_tile()
-
+        # Rows 1-2: now playing. Title on 1, artist on 4, album art on 2,3,5,6.
         title = info.get('title') or ('paused' if info.get('status') else 'nothing playing')
-        out[7] = render.text_tile(title, bg=render.BG, size=13,
+        out[1] = render.text_tile(title, bg=render.BG, size=13,
                                   accent=render.OK if playing else None)
-        out[10] = (render.text_tile(info['artist'], bg=render.BG, size=12, fg=render.MUTED)
-                   if info.get('artist') else render.blank_tile())
+        out[4] = (render.text_tile(info['artist'], bg=render.BG, size=12, fg=render.MUTED)
+                  if info.get('artist') else render.blank_tile())
+        art = self._art()
+        for (c, r) in ((0, 0), (1, 0), (0, 1), (1, 1)):
+            key = render.key_at(c + 1, r)            # cols 2-3, rows 1-2 -> 2,3,5,6
+            out[key] = art[(c, r)] if art else render.blank_tile()
+
+        # Rows 3-4: transport + volume as icon buttons.
+        out[7] = self._btn('prev', 'prev', 7)
+        out[8] = self._btn('pause' if playing else 'play', 'pause' if playing else 'play',
+                           8, accent=render.OK if playing else None)
+        out[9] = self._btn('next', 'next', 9)
+        out[10] = self._btn('voldn', 'vol -', 10)
+        # The mute button shows the current volume level, and its muted state.
+        vol_label = 'muted' if muted else ('%d%%' % vol if vol is not None else 'mute')
+        out[11] = self._btn('mute' if muted else 'volup', vol_label, 11,
+                            accent=render.ALERT if muted else None)
+        out[12] = self._btn('volup', 'vol +', 12)
         return out
 
     def on_press(self, deck, key):
         actions = {
-            1: lambda: osapi.media('previous'),
-            2: lambda: osapi.media('play_pause'),
-            3: lambda: osapi.media('next'),
-            4: lambda: osapi.volume(-self.volume_step),
-            5: lambda: osapi.volume(mute=True),
-            6: lambda: osapi.volume(+self.volume_step),
+            7: lambda: osapi.media('previous'),
+            8: lambda: osapi.media('play_pause'),
+            9: lambda: osapi.media('next'),
+            10: lambda: osapi.volume(-self.volume_step),
+            11: lambda: osapi.volume(mute=True),
+            12: lambda: osapi.volume(+self.volume_step),
         }
         act = actions.get(key)
         if act:

@@ -50,11 +50,11 @@ class LauncherPage(Page):
             face = tuple(item['colour']) if item.get('colour') else render.SURFACE
             if img is not None:
                 out[i] = render.button_tile(img, label if self.labels else None,
-                                            face=face, accent=accent)
+                                            face=face, accent=accent, key=i)
             else:
                 # No icon: show the label as the button's own text.
                 out[i] = render.button_tile(glyph=label, glyph_size=20,
-                                            face=face, accent=accent)
+                                            face=face, accent=accent, key=i)
         return out
 
     def on_press(self, deck, key):

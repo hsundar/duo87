@@ -80,29 +80,29 @@ class ZoomPage(Page):
             warn = ('install ydotool' if osapi.LINUX and osapi.os.environ.get('WAYLAND_DISPLAY')
                     else 'no key backend')
 
-        def btn(key, label, accent=None, face=render.SURFACE):
-            name, glyph = ZOOM_ICONS[key]
-            img = icons.load_icon(name, 60)
-            return render.button_tile(img, label, glyph=glyph, glyph_size=22,
-                                      face=face, accent=accent)
+        def btn(icon_key, label, key, accent=None, face=render.SURFACE):
+            name, glyph = ZOOM_ICONS[icon_key]
+            img = icons.load_symbolic(name, 46)      # light monochrome icon
+            return render.button_tile(img, label, glyph=glyph, glyph_size=20,
+                                      face=face, accent=accent, key=key)
 
         mute_state = render.ALERT if self.muted else (render.OK if self.muted is False else None)
         vid_state = render.ALERT if self.video_off else (render.OK if self.video_off is False else None)
 
         out = {
-            1: btn('mute_muted' if self.muted else 'mute', 'mute', accent=mute_state),
-            2: btn('video_off' if self.video_off else 'video', 'video', accent=vid_state),
-            3: btn('share', 'share'),
-            4: btn('chat', 'chat'),
-            5: btn('people', 'people'),
-            6: btn('hand', 'hand'),
-            7: btn('record', 'record'),
-            8: btn('full', 'full'),
+            1: btn('mute_muted' if self.muted else 'mute', 'mute', 1, accent=mute_state),
+            2: btn('video_off' if self.video_off else 'video', 'video', 2, accent=vid_state),
+            3: btn('share', 'share', 3),
+            4: btn('chat', 'chat', 4),
+            5: btn('people', 'people', 5),
+            6: btn('hand', 'hand', 6),
+            7: btn('record', 'record', 7),
+            8: btn('full', 'full', 8),
             9: render.blank_tile(),
             10: render.text_tile(warn, bg=render.SURFACE, fg=render.WARN,
                                  size=11) if warn else render.blank_tile(),
-            11: btn('join', 'join') if self.join_uri else render.blank_tile(),
-            12: btn('leave', 'leave', face=(90, 24, 24), accent=render.ALERT),
+            11: btn('join', 'join', 11) if self.join_uri else render.blank_tile(),
+            12: btn('leave', 'leave', 12, face=(90, 24, 24), accent=render.ALERT),
         }
         return out
 

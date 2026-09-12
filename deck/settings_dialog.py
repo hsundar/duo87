@@ -8,13 +8,72 @@ any order. Each launcher page has its own button table (label/command/uri/icon).
 Calendar URLs may be private (a Google "secret address"); they are stored only
 in the user's config.
 """
-from PyQt6 import QtCore, QtWidgets
+from PyQt6 import QtCore, QtGui, QtWidgets
 
 from . import config as cfgmod
 from . import app as appmod
+from . import icons
 
 _ROLE = QtCore.Qt.ItemDataRole.UserRole
 BUILTIN_PAGES = ['media', 'system', 'zoom', 'calendar', 'nowplaying']
+
+
+class IconPickerDialog(QtWidgets.QDialog):
+    """Browse the icon theme and pick an icon name (with live previews)."""
+
+    def __init__(self, current='', parent=None):
+        super().__init__(parent)
+        self.setWindowTitle('Pick an icon')
+        self.resize(520, 460)
+        self.selected = current
+        self._names = icons.list_icon_names()
+
+        self.search = QtWidgets.QLineEdit(current)
+        self.search.setPlaceholderText('type to filter (e.g. firefox, terminal, mail)…')
+        self.search.textChanged.connect(self._refilter)
+        self.grid = QtWidgets.QListWidget()
+        self.grid.setViewMode(QtWidgets.QListView.ViewMode.IconMode)
+        self.grid.setIconSize(QtCore.QSize(48, 48))
+        self.grid.setResizeMode(QtWidgets.QListView.ResizeMode.Adjust)
+        self.grid.setGridSize(QtCore.QSize(96, 76))
+        self.grid.itemDoubleClicked.connect(lambda _it: self.accept())
+
+        bb = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.StandardButton.Ok
+            | QtWidgets.QDialogButtonBox.StandardButton.Cancel)
+        bb.accepted.connect(self.accept)
+        bb.rejected.connect(self.reject)
+
+        lay = QtWidgets.QVBoxLayout(self)
+        lay.addWidget(self.search)
+        lay.addWidget(self.grid)
+        lay.addWidget(bb)
+        self._refilter(current)
+
+    def _refilter(self, text):
+        text = (text or '').strip().lower()
+        self.grid.clear()
+        if not text:
+            return
+        shown = 0
+        for name in self._names:
+            if text in name.lower():
+                path = icons.find_icon(name)
+                it = QtWidgets.QListWidgetItem(name)
+                if path:
+                    it.setIcon(QtGui.QIcon(path))
+                self.grid.addItem(it)
+                shown += 1
+                if shown >= 300:            # cap for responsiveness
+                    break
+
+    def accept(self):
+        it = self.grid.currentItem()
+        if it is not None:
+            self.selected = it.text()
+        else:
+            self.selected = self.search.text().strip()
+        super().accept()
 
 
 class ButtonsDialog(QtWidgets.QDialog):
@@ -34,8 +93,10 @@ class ButtonsDialog(QtWidgets.QDialog):
 
         addb = QtWidgets.QPushButton('Add')
         rmb = QtWidgets.QPushButton('Remove')
+        pickb = QtWidgets.QPushButton('Pick icon…')
         addb.clicked.connect(lambda: self._add('', '', '', ''))
         rmb.clicked.connect(self._remove)
+        pickb.clicked.connect(self._pick_icon)
         bb = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.StandardButton.Ok
             | QtWidgets.QDialogButtonBox.StandardButton.Cancel)
@@ -43,11 +104,12 @@ class ButtonsDialog(QtWidgets.QDialog):
         bb.rejected.connect(self.reject)
 
         row = QtWidgets.QHBoxLayout()
-        row.addWidget(addb); row.addWidget(rmb); row.addStretch(1)
+        row.addWidget(addb); row.addWidget(rmb); row.addWidget(pickb); row.addStretch(1)
         lay = QtWidgets.QVBoxLayout(self)
         lay.addWidget(QtWidgets.QLabel('Up to 12 buttons. Icon = theme name '
                                        '(firefox, org.gnome.Nautilus) or a path; '
-                                       'blank guesses from the command.'))
+                                       'blank guesses from the command. '
+                                       'Select a row, then "Pick icon…".'))
         lay.addWidget(self.table)
         lay.addLayout(row)
         lay.addWidget(bb)
@@ -62,6 +124,16 @@ class ButtonsDialog(QtWidgets.QDialog):
         r = self.table.currentRow()
         if r >= 0:
             self.table.removeRow(r)
+
+    def _pick_icon(self):
+        r = self.table.currentRow()
+        if r < 0:
+            QtWidgets.QMessageBox.information(self, 'Pick icon', 'Select a button row first.')
+            return
+        cur = self.table.item(r, 3).text() if self.table.item(r, 3) else ''
+        dlg = IconPickerDialog(cur, self)
+        if dlg.exec() and dlg.selected:
+            self.table.setItem(r, 3, QtWidgets.QTableWidgetItem(dlg.selected))
 
     def items(self):
         out = []
