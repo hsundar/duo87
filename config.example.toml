@@ -13,7 +13,7 @@ brightness = 80
 #   cards  -- full-panel wallpaper, swipe DOWN to browse (max 3; slot 0 is the
 #             pad's own stock image, which cannot be changed)
 
-pages = ["launcher", "media", "system", "zoom"]
+pages = ["launcher", "media", "audio", "system", "zoom"]
 
 # You can have SEVERAL launcher pages under any names -- give each a section with
 #   type = "launcher"  and its own items, e.g.:

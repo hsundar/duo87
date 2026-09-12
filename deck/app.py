@@ -19,7 +19,7 @@ import sys
 
 from .core import Deck
 from .pages import (LauncherPage, SysMonPage, MediaPage, CalendarPage, ZoomPage,
-                    NowPlayingPage)
+                    NowPlayingPage, AudioPage)
 from .cards import ClockCard, NowPlayingCard, CalendarCard, WeatherCard
 
 try:
@@ -87,7 +87,8 @@ def build_cards(cfg):
     return built
 
 
-BUILTIN_PAGE_TYPES = {'launcher', 'media', 'system', 'zoom', 'calendar', 'nowplaying'}
+BUILTIN_PAGE_TYPES = {'launcher', 'media', 'system', 'zoom', 'calendar', 'nowplaying',
+                      'audio'}
 
 
 def build_pages(cfg):
@@ -129,6 +130,8 @@ def build_pages(cfg):
                                   join_uri=section.get('join_uri'),
                                   personal_room=section.get('personal_room'),
                                   open_command=section.get('open_command', 'zoom')))
+        elif ptype == 'audio':
+            built.append(AudioPage())
         else:
             print('page %r has no type (set type=... in [%s]); skipped' % (name, name),
                   file=sys.stderr)

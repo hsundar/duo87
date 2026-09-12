@@ -327,6 +327,70 @@ def keystroke(combo):
     return False
 
 
+# --- audio device selection (PipeWire/Pulse via pactl) ---------------------
+
+def _audio_devices(kind):
+    """kind 'sinks' (outputs) or 'sources' (inputs). -> [{name, description, default}]."""
+    if not (LINUX and _has('pactl')):
+        return []
+    which = 'sink' if kind == 'sinks' else 'source'
+    default = _capture(['pactl', 'get-default-' + which])
+    out = _capture(['pactl', 'list', kind])
+    if not out:
+        return []
+    devices, name, desc = [], None, None
+    for line in out.splitlines():
+        st = line.strip()
+        if st.startswith('Name:'):
+            name = st.split(':', 1)[1].strip()
+        elif st.startswith('Description:'):
+            desc = st.split(':', 1)[1].strip()
+            if name:
+                # skip monitor sources (loopbacks, not real inputs)
+                if not (kind == 'sources' and name.endswith('.monitor')):
+                    devices.append({'name': name, 'description': desc or name,
+                                    'default': name == default})
+            name = desc = None
+    return devices
+
+
+def audio_outputs():
+    return _audio_devices('sinks')
+
+
+def audio_inputs():
+    return _audio_devices('sources')
+
+
+def _move_streams(kind, target):
+    """Move existing streams to `target` so switching takes effect immediately."""
+    listing = 'sink-inputs' if kind == 'sink' else 'source-outputs'
+    move = 'move-sink-input' if kind == 'sink' else 'move-source-output'
+    out = _capture(['pactl', 'list', 'short', listing])
+    for line in (out or '').splitlines():
+        sid = line.split('\t')[0].strip() if line.strip() else ''
+        if sid.isdigit():
+            _capture(['pactl', move, sid, target])
+
+
+def set_audio_output(name):
+    if not (LINUX and _has('pactl')):
+        return False
+    ok = _capture(['pactl', 'set-default-sink', name]) is not None
+    if ok:
+        _move_streams('sink', name)
+    return ok
+
+
+def set_audio_input(name):
+    if not (LINUX and _has('pactl')):
+        return False
+    ok = _capture(['pactl', 'set-default-source', name]) is not None
+    if ok:
+        _move_streams('source', name)
+    return ok
+
+
 # --- window detection (for state-aware pages, e.g. Zoom) --------------------
 
 def list_windows():

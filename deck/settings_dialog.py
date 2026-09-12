@@ -15,7 +15,7 @@ from . import app as appmod
 from . import icons
 
 _ROLE = QtCore.Qt.ItemDataRole.UserRole
-BUILTIN_PAGES = ['media', 'system', 'zoom', 'calendar', 'nowplaying']
+BUILTIN_PAGES = ['media', 'system', 'zoom', 'audio', 'calendar', 'nowplaying']
 
 
 class IconPickerDialog(QtWidgets.QDialog):

@@ -4,7 +4,8 @@ from .sysmon import SysMonPage
 from .media import MediaPage
 from .calendar import CalendarPage
 from .zoom import ZoomPage
+from .audio import AudioPage
 from .nowplaying import NowPlayingPage
 
-__all__ = ['LauncherPage', 'SysMonPage', 'MediaPage', 'CalendarPage', 'ZoomPage',
+__all__ = ['LauncherPage', 'SysMonPage', 'MediaPage', 'CalendarPage', 'ZoomPage', 'AudioPage',
            'NowPlayingPage']

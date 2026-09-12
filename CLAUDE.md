@@ -92,7 +92,7 @@ deck/osapi.py    every platform-specific call: launch, media, volume, keystrokes
                  no extra package and follows every player including browser
                  tabs. It also yields cover art and position, so the media page
                  shows album art across a 2x2 tile block with a progress bar.
-deck/pages/      edit-surface tiles: launcher, media, sysmon, zoom. Buttons
+deck/pages/      edit-surface tiles: launcher, media, audio, sysmon, zoom. Buttons
                  use icon-theme icons via deck.icons with text fallback.
                  MULTIPLE launcher pages: any page name whose [<name>]
                  section sets type="launcher" (build_pages generalised).

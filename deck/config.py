@@ -24,7 +24,7 @@ CONFIG_PATHS = [
 ]
 
 # The names the app knows how to build (kept here so the editor can offer them).
-PAGE_TYPES = ['launcher', 'media', 'system', 'zoom']
+PAGE_TYPES = ['launcher', 'media', 'system', 'zoom', 'audio']
 CARD_TYPES = ['clock', 'nowplaying', 'weather', 'calendar']
 MAX_CARDS = 3                            # slots 1..3 (slot 0 is the stock image)
 
