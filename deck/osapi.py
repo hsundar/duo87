@@ -199,7 +199,7 @@ def media_status():
     when the player does not publish them -- most do not publish Position.
     """
     blank = dict(player=None, status=None, title=None, artist=None, album=None,
-                 art=None, position=None, length=None)
+                 art=None, url=None, position=None, length=None)
     if _busctl():
         dest = active_player()
         if dest:
@@ -216,12 +216,17 @@ def media_status():
                 art = unquote(urlparse(art).path)
             elif isinstance(art, str) and not os.path.exists(art):
                 art = None            # remote cover art is not fetched
+            url = get('xesam:url')
+            if isinstance(url, str) and url.startswith('file://'):
+                from urllib.parse import unquote, urlparse
+                url = unquote(urlparse(url).path)
             return dict(player=dest.rsplit('.', 1)[-1],
                         status=_get_property(dest, 'PlaybackStatus'),
                         title=get('xesam:title') or None,
                         artist=artist or None,
                         album=get('xesam:album') or None,
                         art=art or None,
+                        url=url or None,
                         position=(pos / 1e6) if isinstance(pos, (int, float)) else None,
                         length=(length / 1e6) if isinstance(length, (int, float)) else None)
     if LINUX and _has('playerctl'):
